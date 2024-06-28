@@ -77,6 +77,8 @@ pub struct GifskiSettings {
     pub fast: bool,
     /// If negative, looping is disabled. The number of times the sequence is repeated. 0 to loop forever.
     pub repeat: i16,
+    // Matte option for backgrounds.
+    pub matte: *const RGB8
 }
 
 #[repr(C)]
@@ -145,6 +147,24 @@ pub unsafe extern "C" fn gifski_set_motion_quality(handle: *mut GifskiHandle, qu
     if let Ok(Some(w)) = g.writer.lock().as_deref_mut() {
         #[allow(deprecated)]
         w.set_motion_quality(quality);
+        GifskiError::OK
+    } else {
+        GifskiError::INVALID_STATE
+    }
+}
+
+/// Configures the matte color option for gifski settings.
+///
+/// Only valid immediately after calling `gifski_new`, before any frames are added.
+#[no_mangle]
+pub unsafe extern "C" fn gifski_set_matte_color(handle: *mut GifskiHandle, col_r: u8,
+    col_g: u8,
+    col_b: u8,) -> GifskiError {
+    let Some(g) = borrow(handle) else { return GifskiError::NULL_ARG };
+
+    if let Ok(Some(w)) = g.writer.lock().as_deref_mut() {
+        #[allow(deprecated)]
+        w.set_matte_color(RGB8::new(col_r, col_g, col_b));
         GifskiError::OK
     } else {
         GifskiError::INVALID_STATE
@@ -610,6 +630,7 @@ fn c_cb() {
             quality: 100,
             fast: false,
             repeat: -1,
+            matte: ptr::null(),
         })
     };
     assert!(!g.is_null());
@@ -647,6 +668,7 @@ fn progress_abort() {
             quality: 100,
             fast: false,
             repeat: -1,
+            matte: ptr::null()
         })
     };
     assert!(!g.is_null());
@@ -672,6 +694,7 @@ fn cant_write_after_finish() {
         quality: 100,
         fast: false,
         repeat: -1,
+        matte: ptr::null()
     })};
     assert!(!g.is_null());
     unsafe extern "C" fn cb(_s: usize, _buf: *const u8, u1: *mut c_void) -> c_int {
@@ -692,6 +715,7 @@ fn c_write_failure_propagated() {
         quality: 100,
         fast: false,
         repeat: -1,
+            matte: ptr::null()
     })};
     assert!(!g.is_null());
     unsafe extern fn cb(_s: usize, _buf: *const u8, _user: *mut c_void) -> c_int {
@@ -711,6 +735,7 @@ fn test_error_callback() {
         quality: 100,
         fast: false,
         repeat: -1,
+        matte: ptr::null()
     })};
     assert!(!g.is_null());
     unsafe extern "C" fn cb(_s: usize, _buf: *const u8, u1: *mut c_void) -> c_int {
@@ -738,6 +763,7 @@ fn cant_write_twice() {
         quality: 100,
         fast: false,
         repeat: -1,
+        matte: ptr::null()
     })};
     assert!(!g.is_null());
     unsafe extern "C" fn cb(_s: usize, _buf: *const u8, _user: *mut c_void) -> c_int {
@@ -757,6 +783,7 @@ fn c_incomplete() {
         quality: 100,
         fast: true,
         repeat: 0,
+        matte: ptr::null()
     })};
 
     let rgb: *const RGB8 = ptr::null();
@@ -774,5 +801,56 @@ fn c_incomplete() {
         assert_eq!(GifskiError::OK, gifski_add_frame_rgba(g, 0, 1, 1, &RGBA8::new(0, 0, 0, 0), 5.0));
         assert_eq!(GifskiError::OK, gifski_add_frame_rgb(g, 1, 1, 3, 1, &RGB::new(0, 0, 0), 5.0));
         assert_eq!(GifskiError::OK, gifski_finish(g));
+    }
+}
+
+#[test]
+fn use_matte_option() {
+    let matte_color = RGB8 {
+        r: 255,
+        g: 0,
+        b: 255,
+    };
+    let g_with_matte = unsafe {
+        gifski_new(&GifskiSettings {
+            width: 1,
+            height: 1,
+            quality: 100,
+            fast: true,
+            repeat: 0,
+            matte: &matte_color as *const RGB8,
+        })
+    };
+    assert!(!g_with_matte.is_null());
+
+    unsafe {
+        assert_eq!(
+            GifskiError::OK,
+            gifski_add_frame_rgba(g_with_matte, 0, 1, 1, &RGBA8::new(255, 0, 255, 255), 0.0)
+        );
+    }
+
+    let g_without_matte = unsafe {
+        gifski_new(&GifskiSettings {
+            width: 1,
+            height: 1,
+            quality: 100,
+            fast: true,
+            repeat: 0,
+            matte: ptr::null(),
+        })
+    };
+    assert!(!g_without_matte.is_null());
+
+    unsafe {
+        assert_eq!(
+            GifskiError::OK,
+            gifski_add_frame_rgba(g_without_matte, 0, 1, 1, &RGBA8::new(255, 0, 255, 255), 0.0)
+        );
+    }
+
+    unsafe {
+        assert_eq!(GifskiError::OK, gifski_finish(g_with_matte));
+        assert_eq!(GifskiError::OK, gifski_finish(g_without_matte));
     }
 }
