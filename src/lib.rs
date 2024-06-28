@@ -84,6 +84,8 @@ pub struct Settings {
     pub fast: bool,
     /// Sets the looping method for the image sequence.
     pub repeat: Repeat,
+    // Matte Option
+    pub matte: Option<RGB8>,
 }
 
 #[derive(Copy, Clone)]
@@ -130,6 +132,7 @@ impl Default for Settings {
             quality: 100,
             fast: false,
             repeat: Repeat::Infinite,
+            matte: None,
         }
     }
 }
@@ -254,7 +257,7 @@ pub fn new(settings: Settings) -> GifResult<(Collector, Writer)> {
                 motion_quality: settings.quality,
                 giflossy_quality: settings.quality,
                 extra_effort: false,
-                matte: None,
+                matte: settings.matte,
             },
             fixed_colors: Vec::new(),
         },

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include <cassert>
 
 // build command:
 // clang++ -std=c++11 main.cpp -L../target/release -lgifski -I..
@@ -87,12 +88,11 @@ void draw_triangle(std::vector<unsigned char> &buffer, int width, const RGB8 &co
 
 int main()
 {
-  // GifskiSettings settings = {256, 256, 100, false, 0, nullptr};
-  // RGB8 matte_color = {0, 0, 0}; // Black matte
-  // RGB8 matte_color = {255, 255, 255}; // White matte
-  // settings.matte = &matte_color;
-
-  GifskiSettings settings = {256, 256, 100, false, 0, nullptr};
+  RGB8 *matte_color = new RGB8;
+  matte_color->r = 255;
+  matte_color->g = 0;
+  matte_color->b = 170;
+  GifskiSettings settings = {256, 256, 100, false, 0, matte_color};
 
   gifski *g = gifski_new(&settings);
   if (!g)
@@ -100,6 +100,10 @@ int main()
     std::cerr << "Failed to initialize gifski encoder" << std::endl;
     return 1;
   }
+  RGB8 *matte = gifski_get_matte(g);
+  assert(matte->r == 255);
+  assert(matte->g == 0);
+  assert(matte->b == 170);
   gifski_set_file_output(g, "test_output.gif");
 
   std::vector<RGB8> colors = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 0}, {255, 0, 255}, {0, 255, 255}};
@@ -113,5 +117,7 @@ int main()
   gifski_finish(g);
 
   std::cout << "GIF created successfully with animated colors and matte." << std::endl;
+
+  delete matte_color;
   return 0;
 }

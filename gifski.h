@@ -165,6 +165,7 @@ extern "C"
    * a colored background.
    */
   GifskiError gifski_set_matte(gifski *handle, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+  RGB8* gifski_get_matte(gifski *handle);
 
   /**
    * Adds a frame to the animation. This function is asynchronous.

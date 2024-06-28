@@ -122,6 +122,7 @@ pub unsafe extern "C" fn gifski_new(settings: *const GifskiSettings) -> *const G
         quality: settings.quality,
         fast: settings.fast,
         repeat: if settings.repeat == -1 { Repeat::Finite(0) } else if settings.repeat == 0 { Repeat::Infinite } else { Repeat::Finite(settings.repeat as u16) },
+        matte: if settings.matte.is_null() { None } else { Some(*settings.matte) }
     };
 
     if let Ok((collector, writer)) = crate::new(s) {
@@ -169,6 +170,21 @@ pub unsafe extern "C" fn gifski_set_matte_color(handle: *mut GifskiHandle, col_r
     } else {
         GifskiError::INVALID_STATE
     }
+}
+
+/// Configures the matte color option for gifski settings.
+///
+/// Only valid immediately after calling `gifski_new`, before any frames are added.
+#[no_mangle]
+pub unsafe extern "C" fn gifski_get_matte(handle: *mut GifskiHandle) -> *const RGB8 {
+    let Some(g) = borrow(handle) else { return std::ptr::null(); };
+
+    if let Ok(Some(w)) = g.writer.lock().as_deref_mut() {
+        if let Some(matte) = w.settings.matte.as_ref() {
+            return matte as *const RGB8;
+        }
+    }
+    std::ptr::null()
 }
 
 /// Quality 1-100 of gifsicle compression. Lower values add noise. Defaults to `settings.quality`.
@@ -821,9 +837,16 @@ fn use_matte_option() {
             matte: &matte_color as *const RGB8,
         })
     };
-    assert!(!g_with_matte.is_null());
 
     unsafe {
+        let Some(borrowed) = borrow(g_with_matte) else { panic!("Failed to borrow gifski handle")};
+
+        if let Ok(Some(w)) = borrowed.writer.lock().as_deref_mut() {
+            let settings_matte = w.settings.matte;
+            assert_eq!(Some(matte_color), settings_matte, "Failed to match the two values");
+        } else {
+            panic!("Could not get the writer.");
+        }
         assert_eq!(
             GifskiError::OK,
             gifski_add_frame_rgba(g_with_matte, 0, 1, 1, &RGBA8::new(255, 0, 255, 255), 0.0)
@@ -843,6 +866,13 @@ fn use_matte_option() {
     assert!(!g_without_matte.is_null());
 
     unsafe {
+        let borrowed = borrow(g_without_matte).expect("Failed to borrow gifski handle");
+        if let Ok(Some(w)) = borrowed.writer.lock().as_deref_mut() {
+            let settings_matte = w.settings.matte;
+            assert_eq!(None, settings_matte)
+        } else {
+            panic!("Could not get the writer.");
+        }
         assert_eq!(
             GifskiError::OK,
             gifski_add_frame_rgba(g_without_matte, 0, 1, 1, &RGBA8::new(255, 0, 255, 255), 0.0)
