@@ -430,12 +430,6 @@ impl Writer {
         }
     }
 
-    #[deprecated(note = "please don't use, it will be in Settings eventually")]
-    #[doc(hidden)]
-    pub fn set_matte_color(&mut self, col: RGB8) {
-        self.settings.matte = Some(col);
-    }
-
     /// `importance_map` is computed from previous and next frame.
     /// Improves quality of pixels visible for longer.
     /// Avoids wasting palette on pixels identical to the background.

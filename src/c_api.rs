@@ -158,24 +158,6 @@ pub unsafe extern "C" fn gifski_set_motion_quality(handle: *mut GifskiHandle, qu
 ///
 /// Only valid immediately after calling `gifski_new`, before any frames are added.
 #[no_mangle]
-pub unsafe extern "C" fn gifski_set_matte_color(handle: *mut GifskiHandle, col_r: u8,
-    col_g: u8,
-    col_b: u8,) -> GifskiError {
-    let Some(g) = borrow(handle) else { return GifskiError::NULL_ARG };
-
-    if let Ok(Some(w)) = g.writer.lock().as_deref_mut() {
-        #[allow(deprecated)]
-        w.set_matte_color(RGB8::new(col_r, col_g, col_b));
-        GifskiError::OK
-    } else {
-        GifskiError::INVALID_STATE
-    }
-}
-
-/// Configures the matte color option for gifski settings.
-///
-/// Only valid immediately after calling `gifski_new`, before any frames are added.
-#[no_mangle]
 pub unsafe extern "C" fn gifski_get_matte(handle: *mut GifskiHandle) -> *const RGB8 {
     let Some(g) = borrow(handle) else { return std::ptr::null(); };
 

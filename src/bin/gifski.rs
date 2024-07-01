@@ -201,18 +201,19 @@ fn bin_main() -> BinResult<()> {
     let motion_quality = matches.get_one::<u8>("motion-quality").copied();
     let lossy_quality = matches.get_one::<u8>("lossy-quality").copied();
     let fast = matches.get_flag("fast");
+    let matte = matches.get_one::<rgb::RGB8>("matte");
     let settings = Settings {
         width,
         height,
         quality: matches.get_one::<u8>("quality").copied().unwrap_or(100),
         fast,
         repeat,
+        matte: matte.copied(),
     };
     let quiet = matches.get_flag("quiet") || output_path == DestPath::Stdout;
     let fps: f32 = matches.get_one::<f32>("fps").copied().ok_or("?")?;
     let speed: f32 = matches.get_one::<f32>("fast-forward").copied().ok_or("?")?;
     let fixed_colors = matches.get_many::<Vec<rgb::RGB8>>("fixed-color");
-    let matte = matches.get_one::<rgb::RGB8>("matte");
 
     let rate = source::Fps { fps, speed };
 
@@ -246,10 +247,6 @@ fn bin_main() -> BinResult<()> {
         for f in fixed_colors.flatten() {
             writer.add_fixed_color(*f);
         }
-    }
-    if let Some(matte) = matte {
-        #[allow(deprecated)]
-        writer.set_matte_color(*matte);
     }
     if extra {
         #[allow(deprecated)]
